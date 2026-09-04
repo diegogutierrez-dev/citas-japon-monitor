@@ -86,6 +86,21 @@ def log(msg: str) -> None:
     print(f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M:%S} UTC  {msg}", flush=True)
 
 
+def unwrap_ajax(text: str) -> str:
+    """El endpoint ajax responde {"html": "..."} con el HTML adentro;
+    las vistas normales (bootstrap) llegan como HTML plano."""
+    stripped = text.lstrip()
+    if not stripped.startswith("{"):
+        return text
+    try:
+        data = json.loads(stripped)
+    except json.JSONDecodeError:
+        return text
+    if isinstance(data, dict) and isinstance(data.get("html"), str):
+        return data["html"]
+    raise ParseError(f"respuesta ajax JSON sin campo 'html' (claves: {sorted(data) if isinstance(data, dict) else type(data).__name__})")
+
+
 class Rsvsys:
     """Cliente que mantiene sesión y tokens frescos."""
 
@@ -170,7 +185,7 @@ class Rsvsys:
             },
         )
         r.encoding = r.apparent_encoding or "utf-8"
-        html = r.text
+        html = unwrap_ajax(r.text)
         self._absorb(html)  # tokens nuevos para el siguiente request
         if DUMP:
             Path(f"dump_{disp_type}_{target:%Y%m%d}.html").write_text(html, encoding="utf-8")
@@ -184,7 +199,7 @@ def parse_month(html: str):
     soup = BeautifulSoup(html, "html.parser")
     table = soup.find("table", class_="sc_cal_month")
     if table is None:
-        raise ParseError("vista de mes sin table.sc_cal_month")
+        raise ParseError(f"vista de mes sin table.sc_cal_month (inicio: {html[:120]!r})")
 
     header = soup.find("div", class_="c_cal_navex_date")
     header_html = str(header) if header else html
@@ -217,7 +232,7 @@ def parse_day(html: str):
     """Devuelve [(hora, cupos), ...] con cupos > 0 de una vista de día."""
     soup = BeautifulSoup(html, "html.parser")
     if not SLOT_RE.search(soup.get_text(" ", strip=True)):
-        raise ParseError("vista de día sin ningún '残 N 件'")
+        raise ParseError(f"vista de día sin ningún '残 N 件' (inicio: {html[:120]!r})")
     out = []
     for row in soup.find_all("tr"):
         text = row.get_text(" ", strip=True)

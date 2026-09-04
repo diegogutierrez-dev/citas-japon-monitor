@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from monitor import ParseError, filter_before, parse_day, parse_month
+from monitor import ParseError, filter_before, parse_day, parse_month, unwrap_ajax
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -41,6 +41,23 @@ class TestParseDay:
     def test_unexpected_html_raises(self):
         with pytest.raises(ParseError):
             parse_day("<html><body>error interno</body></html>")
+
+
+class TestUnwrapAjax:
+    def test_json_envelope_yields_inner_html(self):
+        import json
+
+        wrapped = json.dumps({"html": load("month_one_available.html")})
+        days, _ = parse_month(unwrap_ajax(wrapped))
+        assert days == [date(2026, 9, 15)]
+
+    def test_plain_html_passes_through(self):
+        html = load("day_two.html")
+        assert unwrap_ajax(html) == html
+
+    def test_json_without_html_field_raises(self):
+        with pytest.raises(ParseError):
+            unwrap_ajax('{"error": "algo"}')
 
 
 class TestFilterBefore:
