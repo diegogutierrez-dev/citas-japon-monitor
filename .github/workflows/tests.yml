@@ -1,0 +1,28 @@
+# Los tests corren solo en push, no en cada corrida del monitoreo:
+# sumarían ~10s a cada una de las ~80 corridas diarias.
+name: tests
+
+on:
+  push:
+    paths:
+      - 'monitor.py'
+      - 'tests/**'
+      - 'requirements*.txt'
+      - '.github/workflows/tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q

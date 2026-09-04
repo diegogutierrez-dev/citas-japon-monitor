@@ -1,0 +1,68 @@
+# Monitoreo de cupos: corre cada 10 min, 7:00am–7:50pm hora Colombia, lun–vie.
+# Colombia es UTC-5 sin DST; la ventana cruza medianoche UTC, de ahí las dos
+# entradas de schedule (la segunda corre en días UTC corridos: mar–sáb UTC
+# equivale a lun–vie 7pm–8pm COT).
+#
+# OJO: GitHub desactiva los schedules tras 60 días sin actividad en el repo.
+# Cualquier commit lo reactiva.
+name: check-citas
+
+on:
+  schedule:
+    - cron: '*/10 12-23 * * 1-5'   # 7:00am–6:50pm COT, lun–vie
+    - cron: '*/10 0 * * 2-6'       # 7:00pm–7:50pm COT, lun–vie
+  workflow_dispatch:
+    inputs:
+      verbose:
+        description: 'Log de inventario de íconos por mes'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-citas
+  cancel-in-progress: false   # si una corrida se alarga, la siguiente espera
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # El cache de Actions es inmutable por key, así que la key incluye el
+      # run_id (nunca matchea) y restore-keys recupera la entrada más
+      # reciente por prefijo. Cada corrida guarda una entrada nueva de ~1KB;
+      # GitHub evicta por LRU.
+      - name: Restaurar estado
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: citas-state-${{ github.run_id }}
+          restore-keys: citas-state-
+
+      - name: Chequear cupos
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          BEFORE: '2026-11-03'
+          MONTHS_AHEAD: '2'
+        run: python monitor.py ${{ inputs.verbose == true && '--verbose' || '' }}
+
+      # always(): si el chequeo notificó y reventó después, el estado ya
+      # escrito debe persistir para no re-notificar en la próxima corrida.
+      - name: Guardar estado
+        if: always() && hashFiles('state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: citas-state-${{ github.run_id }}
