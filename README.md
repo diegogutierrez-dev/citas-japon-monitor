@@ -32,13 +32,15 @@ requests — es el sitio de una embajada, no se martillea, y no subas la frecuen
 
 ## El cron
 
-Colombia es UTC-5 sin horario de verano, así que 7:00am–8:00pm COT cruza la medianoche
-UTC y necesita dos entradas:
+Corre cada 10 minutos, 24/7:
 
 ```yaml
-- cron: '*/10 12-23 * * 1-5'   # 7:00am–6:50pm COT, lun–vie
-- cron: '*/10 0 * * 2-6'       # 7:00pm–7:50pm COT (mar–sáb UTC = lun–vie COT)
+- cron: '*/10 * * * *'
 ```
+
+Los cupos aparecen sobre todo cuando otra persona cancela su cita, y eso pasa a
+cualquier hora de cualquier día — restringir el horario de chequeo ya costó una cita.
+El intervalo se queda en 10 minutos; lo que se amplió es la ventana.
 
 Dos realidades de los schedules de GitHub:
 

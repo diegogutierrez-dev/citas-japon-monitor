@@ -1,7 +1,5 @@
-# Monitoreo de cupos: corre cada 10 min, 7:00am–7:50pm hora Colombia, lun–vie.
-# Colombia es UTC-5 sin DST; la ventana cruza medianoche UTC, de ahí las dos
-# entradas de schedule (la segunda corre en días UTC corridos: mar–sáb UTC
-# equivale a lun–vie 7pm–8pm COT).
+# Monitoreo de cupos: corre cada 10 min, 24/7. Los cupos aparecen sobre todo
+# por cancelaciones de otros, que caen a cualquier hora y cualquier día.
 #
 # OJO: GitHub desactiva los schedules tras 60 días sin actividad en el repo.
 # Cualquier commit lo reactiva.
@@ -9,8 +7,7 @@ name: check-citas
 
 on:
   schedule:
-    - cron: '*/10 12-23 * * 1-5'   # 7:00am–6:50pm COT, lun–vie
-    - cron: '*/10 0 * * 2-6'       # 7:00pm–7:50pm COT, lun–vie
+    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       verbose:
